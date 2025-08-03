@@ -6,29 +6,31 @@ All of the assets actions, action-names and clips are available in its output.
 */
 
 import React, { useEffect, useState, useMemo } from "react"
-import { useGLTF, useTexture, useCursor, useAnimations } from "@react-three/drei"
+import { useGLTF, useFBX, useTexture, useCursor, useAnimations } from "@react-three/drei"
 import { useGraph } from "@react-three/fiber"
 import { a, useSpring } from "@react-spring/three"
 import { SkeletonUtils } from "three-stdlib"
 
 export default function Model({ pose, ...props }) {
-  // Fetch model and a separate texture
-  const { scene, animations } = useGLTF("/jeff_anim.glb")
-  const texture = useTexture("/stacy.jpg")
+  // Fetch FBX model
+  const fbx = useFBX("/Rumba Dancing.fbx")
 
-  // Skinned meshes cannot be re-used in threejs without cloning them
-  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene])
-  // useGraph creates two flat object collections for nodes and materials
-  const { nodes } = useGraph(clone)
+  // Clone the FBX for safe usage (FBX models need cloning for reuse)
+  const clone = useMemo(() => SkeletonUtils.clone(fbx), [fbx])
 
-  // Extract animation actions
-  const { ref, actions, names } = useAnimations(animations)
+  // Extract animation actions from the FBX
+  const { ref, actions, names } = useAnimations(fbx.animations, clone)
 
   // Hover and animation-index states
   const [hovered, setHovered] = useState(false)
   const [index, setIndex] = useState(pose || 0)
+
   // Animate the selection halo
-  const { color, scale } = useSpring({ scale: hovered ? [1.15, 1.15, 1] : [1, 1, 1], color: hovered ? "hotpink" : "aquamarine" })
+  const { color, scale } = useSpring({
+    scale: hovered ? [1.15, 1.15, 1] : [1, 1, 1],
+    color: hovered ? "hotpink" : "aquamarine"
+  })
+
   // Change cursor on hover-state
   useCursor(hovered)
 
@@ -47,28 +49,14 @@ export default function Model({ pose, ...props }) {
   }, [index, actions, names])
 
   return (
-    <group ref={ref} {...props} dispose={null}>
-      <group
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-        onClick={() => setIndex((index + 1) % names.length)}
-        rotation={[Math.PI / 2, 0, 0]}
-        scale={[0.01, 0.01, 0.01]}>
-        <primitive object={nodes.Hips} />
-        <skinnedMesh
-          castShadow
-          receiveShadow
-          geometry={nodes.AvatarBody.geometry}
-          skeleton={nodes.AvatarBody.skeleton}
-          rotation={[-Math.PI / 2, 0, 0]}
-          scale={[100, 100, 100]}>
-          <meshStandardMaterial map={texture} map-flipY={false} skinning />
-        </skinnedMesh>
-      </group>
-      <a.mesh receiveShadow position={[0, 1, -1]} scale={scale}>
-        <circleBufferGeometry args={[0.6, 64]} />
-        <a.meshStandardMaterial color={color} />
-      </a.mesh>
-    </group>
+    <a.group
+      ref={ref}
+      {...props}
+      scale={scale}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+      onClick={() => setIndex((index + 1) % names.length)}>
+      <primitive object={clone} />
+    </a.group>
   )
 }
