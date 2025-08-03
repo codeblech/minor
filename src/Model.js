@@ -13,7 +13,7 @@ import { SkeletonUtils } from "three-stdlib"
 
 export default function Model({ pose, ...props }) {
   // Fetch FBX model
-  const fbx = useFBX("/Rumba Dancing.fbx")
+  const fbx = useFBX("/Silly Dancing.fbx")
 
   // Clone the FBX for safe usage (FBX models need cloning for reuse)
   const clone = useMemo(() => SkeletonUtils.clone(fbx), [fbx])
@@ -33,6 +33,18 @@ export default function Model({ pose, ...props }) {
 
   // Change cursor on hover-state
   useCursor(hovered)
+
+  // Enable shadows on all meshes
+  useEffect(() => {
+    if (clone) {
+      clone.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true
+          child.receiveShadow = true
+        }
+      })
+    }
+  }, [clone])
 
   // Change animation when the index changes
   useEffect(() => {
